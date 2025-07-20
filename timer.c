@@ -1,6 +1,12 @@
 #include "timer.h"
 #include <stdio.h>
 #include <time.h>
+#include <stdlib.h>
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
 
 void print_time(int total_seconds) {
     int minutes = total_seconds / 60;
@@ -57,4 +63,75 @@ void get_status(const TimerState *state) {
     printf("  Break Time Remaining: ");
     print_time(state->earned_break_seconds);
     printf("\n");
+}
+
+//Automatic hour of studying followed by 20 minutes of break time with autoswitching between modes
+void run_automatic_mode(TimerState *state) {
+    state->current_mode = MODE_AUTO;
+    printf("Entering automatic mode: 1h study / 20m break cycles.\n");
+
+    while (1) {
+        // Study phase
+        printf("\n--- STUDYING ---\n");
+        start_session(state, MODE_STUDY);
+        #ifdef _WIN32
+        Sleep(3600 * 1000);  //60 minute studying
+        #else
+        sleep(3600);         //60 minute studying
+        #endif
+        end_session(state);
+        save_timer_state(state, "timer_state.txt");
+
+        // Break phase
+        printf("\n--- BREAK TIME ---\n");
+        start_session(state, MODE_BREAK);
+        #ifdef _WIN32
+        Sleep(1200 * 1000);  //20 minute break
+        #else
+        sleep(1200); //20 minute break
+        #endif
+        end_session(state);
+        save_timer_state(state, "timer_state.txt");
+    }
+}
+
+//File save everything: current mode, start/end time, total time studied/break, and how much break was earned
+int save_timer_state(const TimerState *state, const char *filename) {
+    FILE *file = fopen(filename, "w");
+    if (!file) return -1;
+
+    fprintf(file, "%d\n", state->current_mode);
+    fprintf(file, "%lld\n", state->start_time);
+    fprintf(file, "%lld\n", state->end_time);
+    fprintf(file, "%d\n", state->total_study_seconds);
+    fprintf(file, "%d\n", state->total_break_seconds);
+    fprintf(file, "%d\n", state->earned_break_seconds);
+
+    fclose(file);
+    return 0;
+}
+
+int load_timer_state(TimerState *state, const char *filename) {
+    FILE *file = fopen(filename, "r");
+    if (!file) return -1;
+
+    int mode;
+    long start, end;
+    int study, brk, earned;
+
+    if (fscanf(file, "%d\n%ld\n%ld\n%d\n%d\n%d",
+        &mode, &start, &end, &study, &brk, &earned) != 6) {
+        fclose(file);
+        return -2;
+    }
+
+    state->current_mode = (Mode)mode;
+    state->start_time = (time_t)start;
+    state->end_time = (time_t)end;
+    state->total_study_seconds = study;
+    state->total_break_seconds = brk;
+    state->earned_break_seconds = earned;
+
+    fclose(file);
+    return 0;
 }

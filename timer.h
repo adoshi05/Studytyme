@@ -3,7 +3,7 @@
 
 #include <time.h>
 
-typedef enum { MODE_IDLE, MODE_STUDY, MODE_BREAK } Mode;
+typedef enum { MODE_IDLE, MODE_STUDY, MODE_BREAK, MODE_AUTO } Mode;
 
 typedef struct {
     Mode current_mode;
@@ -19,5 +19,8 @@ void start_session(TimerState *state, Mode mode);
 void end_session(TimerState *state);
 void get_status(const TimerState *state);
 int get_elapsed_time(const TimerState *state);
+void run_automatic_mode(TimerState *state); //automatic hour study, 20 minute break
+int save_timer_state(const TimerState *state, const char *filename); //file saving
+int load_timer_state(TimerState *state, const char *filename); //retrieve from file save
 
 #endif
