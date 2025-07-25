@@ -66,9 +66,39 @@ void get_status(const TimerState *state) {
 }
 
 //Automatic hour of studying followed by 20 minutes of break time with autoswitching between modes
-void run_automatic_mode(TimerState *state) {
+void run_automatic_mode(TimerState *state, int study_minutes, int break_minutes) {
     state->current_mode = MODE_AUTO;
-    printf("Entering automatic mode: 1h study / 20m break cycles.\n");
+
+    printf("Entering automatic mode: %d min study / %d min break cycles.\n", study_minutes, break_minutes);
+
+    int study_secs = study_minutes * 60;
+    int break_secs = break_minutes * 60;
+
+    while (1) {
+        // Study phase
+        printf("\n--- STUDYING ---\n");
+        start_session(state, MODE_STUDY);
+        #ifdef _WIN32
+        Sleep(study_secs * 1000);
+        #else
+        sleep(study_secs);
+        #endif
+        end_session(state);
+        save_timer_state(state, "timer_state.txt");
+
+        // Break phase
+        printf("\n--- BREAK TIME ---\n");
+        start_session(state, MODE_BREAK);
+        #ifdef _WIN32
+        Sleep(break_secs * 1000);
+        #else
+        sleep(break_secs);
+        #endif
+        end_session(state);
+        save_timer_state(state, "timer_state.txt");
+    }
+
+    /*printf("Entering automatic mode: 1h study / 20m break cycles.\n");
 
     while (1) {
         // Study phase
@@ -92,7 +122,7 @@ void run_automatic_mode(TimerState *state) {
         #endif
         end_session(state);
         save_timer_state(state, "timer_state.txt");
-    }
+    }*/
 }
 
 //File save everything: current mode, start/end time, total time studied/break, and how much break was earned

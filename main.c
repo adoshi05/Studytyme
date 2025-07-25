@@ -8,6 +8,13 @@
 #include <unistd.h>
 #endif
 
+void wait_for_enter(const char *prompt) {
+    printf("%s", prompt);
+    fflush(stdout);
+    int ch;
+    while ((ch = getchar()) != '\n' && ch != EOF) {}
+}
+
 int main() {
     TimerState timer;
 
@@ -24,21 +31,41 @@ int main() {
     printf("Enter choice: ");
     int choice;
     scanf("%d", &choice);
+    getchar(); // remove newline
 
     if (choice == 2) {
-        run_automatic_mode(&timer);
+        // get study and break times
+        int study_minutes, break_minutes;
+        printf("Enter study duration in minutes: ");
+        scanf("%d", &study_minutes);
+        printf("Enter break duration in minutes: ");
+        scanf("%d", &break_minutes);
+        getchar(); // remove newline
+        run_automatic_mode(&timer, study_minutes, break_minutes);
     } else {
-        printf("Running in self-paced mode.\n");
-        start_session(&timer, MODE_STUDY);
-        #ifdef _WIN32
-        Sleep(10000);  //10 seconds of studying test
-        #else
-        sleep(10);
-        #endif
-        end_session(&timer);
+        // manual mode (stopwatch mode)
+        printf("\nRunning in self-paced mode.\n");
+        while (1) {
+            wait_for_enter("\nPress [Enter] to START studying...");
+            start_session(&timer, MODE_STUDY);
+            wait_for_enter("Press [Enter] to STOP studying...");
+            end_session(&timer);
+            save_timer_state(&timer, "timer_state.txt");
 
-        save_timer_state(&timer, "timer_state.txt");
-        get_status(&timer);
+            wait_for_enter("\nPress [Enter] to START break...");
+            start_session(&timer, MODE_BREAK);
+            wait_for_enter("Press [Enter] to STOP break...");
+            end_session(&timer);
+            save_timer_state(&timer, "timer_state.txt");
+
+            get_status(&timer);
+
+            char again;
+            printf("\nRepeat another cycle? (y/n): ");
+            scanf(" %c", &again);
+            getchar(); // remove newline
+            if (again != 'y' && again != 'Y') break;
+        }
     }
 
     return 0;
