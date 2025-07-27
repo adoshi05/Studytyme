@@ -23,6 +23,8 @@ int get_elapsed_time(const TimerState *state);
 void run_automatic_mode(TimerState *state, int study_minutes, int break_minutes); //Set times as desired by user for study and break
 int save_timer_state(const TimerState *state, const char *filename); //file saving
 int load_timer_state(TimerState *state, const char *filename); //retrieve from file save
+int end_session_with_return(TimerState *state); //gives time of ended session
+void print_time(int total_seconds); //prints time, minutes and seconds
 
 
 #endif

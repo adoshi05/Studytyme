@@ -125,6 +125,40 @@ void run_automatic_mode(TimerState *state, int study_minutes, int break_minutes)
     }*/
 }
 
+int end_session_with_return(TimerState *state) {
+    state->end_time = time(NULL);
+    int elapsed = (int)(state->end_time - state->start_time);
+
+    if (state->current_mode == MODE_STUDY) {
+        state->total_study_seconds += elapsed;
+        int earned = elapsed / 5;
+        state->earned_break_seconds += earned;
+
+        printf("Study session ended. Duration: ");
+        print_time(elapsed);
+        printf(" - Earned Break: ");
+        print_time(earned);
+        printf("\n");
+    } else if (state->current_mode == MODE_BREAK) {
+        state->total_break_seconds += elapsed;
+        state->earned_break_seconds -= elapsed;
+
+        printf("Break session ended. Duration: ");
+        print_time(elapsed);
+        printf("\n");
+
+        if (state->earned_break_seconds < 0) {
+            printf("You exceeded your earned break by ");
+            print_time(-state->earned_break_seconds);
+            printf("\n");
+            state->earned_break_seconds = 0;
+        }
+    }
+
+    state->current_mode = MODE_IDLE;
+    return elapsed;
+}
+
 //File save everything: current mode, start/end time, total time studied/break, and how much break was earned
 int save_timer_state(const TimerState *state, const char *filename) {
     FILE *file = fopen(filename, "w");

@@ -46,16 +46,54 @@ int main() {
         // manual mode (stopwatch mode)
         printf("\nRunning in self-paced mode.\n");
         while (1) {
+            // studying
             wait_for_enter("\nPress [Enter] to START studying...");
             start_session(&timer, MODE_STUDY);
             wait_for_enter("Press [Enter] to STOP studying...");
-            end_session(&timer);
+            int study_elapsed = end_session_with_return(&timer);
             save_timer_state(&timer, "timer_state.txt");
 
-            wait_for_enter("\nPress [Enter] to START break...");
+            // calculate earned break
+            int earned_break = study_elapsed / 5;
+            printf("\nEarned break time: ");
+            print_time(earned_break);
+            printf("\n");
+
+            // initiate break
+            wait_for_enter("Press [Enter] to START break...");
             start_session(&timer, MODE_BREAK);
-            wait_for_enter("Press [Enter] to STOP break...");
-            end_session(&timer);
+            printf("Taking break for earned time...\n");
+            #ifdef _WIN32
+            Sleep(earned_break * 1000);
+            #else
+            sleep(earned_break);
+            #endif
+
+            // more break prompt
+            char more;
+            printf("Break time over. Do you want more break time? (y/n): ");
+            scanf(" %c", &more);
+            wait_for_enter("");
+
+            int break_elapsed = earned_break;
+
+            if (more == 'y' || more == 'Y') {
+                wait_for_enter("Press [Enter] to END extra break...");
+                int extra_start = (int)time(NULL);
+
+                //wait_for_enter("");
+                int extra_end = (int)time(NULL);
+                int extra = extra_end - extra_start;
+
+                break_elapsed += extra;
+                printf("Extra break duration: ");
+                print_time(extra);
+                printf("\n");
+            }
+
+            // end and save session
+            timer.end_time = timer.start_time + break_elapsed;
+            end_session_with_return(&timer);
             save_timer_state(&timer, "timer_state.txt");
 
             get_status(&timer);
