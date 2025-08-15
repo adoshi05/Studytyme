@@ -11,28 +11,77 @@ app.use(cors());
 // Parse JSON if needed in the future
 app.use(express.json());
 
-// Example start study route
+// Current state/mode
+let state = {
+    mode: 'idle', // also 'study', 'break' and 'idle'
+    studyStart: null,
+    breakStart: null,
+    totalStudy: 0,
+    totalBreak: 0,
+    earnedBreak: 0 // seconds
+};
+
+// Start study route
 app.get('/start-study', (req, res) => {
-    console.log("Study session started.");
-    res.json({ message: "Study session started." });
+    if (state.mode === 'study') {
+        return res.status(400).send('Already studying!');
+    }
+    state.studyStart = Date.now();
+    state.mode = 'study';
+    res.send('Study session started.');
 });
 
-// Example stop study route
+// End study route
 app.get('/end-study', (req, res) => {
-    console.log("Study session stopped.");
-    res.json({ message: "Study session stopped." });
+    if (state.mode !== 'study') {
+        return res.status(400).send('Not currently studying.');
+    }
+    const elapsedSec = Math.floor((Date.now() - state.studyStart) / 1000);
+    state.totalStudy += elapsedSec;
+    state.earnedBreak = Math.floor(elapsedSec / 5); // 1 second break per 5 second study
+    state.studyStart = null;
+    state.mode = 'break';
+    res.json({
+        message: `Study session ended. Studied ${Math.floor(elapsedSec / 60)} min.`,
+        earnedBreakMinutes: Math.floor(state.earnedBreak / 60)
+    });
 });
 
-// Example start break route
+// Start break route
 app.get('/start-break', (req, res) => {
-    console.log("Break started.");
-    res.json({ message: "Break session started." });
+    if (state.mode !== 'break' || state.breakStart) {
+        return res.status(400).send('Not currently on break.');
+    }
+    state.breakStart = Date.now();
+    res.send(`Break started. You have ${Math.floor(state.earnedBreak / 60)} min.`);
 });
 
-// Example stop break route
-app.get('/stop-break', (req, res) => {
-    console.log("Break stopped.");
-    res.json({ message: "Break session stopped." });
+// Stop break route
+app.get('/end-break', (req, res) => {
+    if (state.mode !== 'break' || !state.breakStart) {
+        return res.status(400).send('Break has not started.');
+    }
+    const elapsedSec = Math.floor((Date.now() - state.breakStart) / 1000);
+    state.totalBreak += elapsedSec;
+    let overTime = elapsedSec - state.earnedBreak;
+    state.breakStart = null;
+    state.earnedBreak = 0;
+    state.mode = 'idle';
+
+    if (overTime > 0) {
+        res.json({
+            message: `Break ended. Went over by ${Math.floor(overTime / 60)} min.`
+        });
+    } else {
+        res.json({
+            message: `Break ended within earned time.`
+        });
+    }
+});
+
+// Get state
+app.get('/state', (req, res) => {
+    res.json(state);
 });
 
 // Start server
