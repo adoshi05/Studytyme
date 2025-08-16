@@ -13,7 +13,7 @@ app.use(express.json());
 
 // Current state/mode
 let state = {
-    mode: 'idle', // also 'study', 'break' and 'idle'
+    mode: 'idle', // also 'study' and 'break'
     studyStart: null,
     breakStart: null,
     totalStudy: 0,
@@ -38,22 +38,25 @@ app.get('/end-study', (req, res) => {
     }
     const elapsedSec = Math.floor((Date.now() - state.studyStart) / 1000);
     state.totalStudy += elapsedSec;
-    state.earnedBreak = Math.floor(elapsedSec / 5); // 1 second break per 5 second study
+    state.earnedBreak = Math.floor(elapsedSec / 3); // 1 second break per 3 second study
     state.studyStart = null;
     state.mode = 'break';
     res.json({
+        success: true,
         message: `Study session ended. Studied ${Math.floor(elapsedSec / 60)} min.`,
-        earnedBreakMinutes: Math.floor(state.earnedBreak / 60)
+        earnedBreakSeconds: state.earnedBreak,
+        earnedBreakMinutes: Math.floor(state.earnedBreak / 60),
     });
 });
 
 // Start break route
 app.get('/start-break', (req, res) => {
-    if (state.mode !== 'break' || state.breakStart) {
+    if (state.mode !== 'break') {
         return res.status(400).send('Not currently on break.');
     }
     state.breakStart = Date.now();
     res.send(`Break started. You have ${Math.floor(state.earnedBreak / 60)} min.`);
+    //state.mode = 'break';
 });
 
 // Stop break route

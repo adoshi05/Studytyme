@@ -1,25 +1,71 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 function App() {
-  const [state, setState] = useState({ mode: 'idle' });
+  const [state, setState] = useState({ mode: 'idle' }); // Initial state
+  const [timerDisplay, setTimerDisplay] = useState("00:00"); // Timer set
+  const [overBreak, setOverBreak] = useState(null); // Track break 'overtime'
 
-  const fetchState = () => {
+  const studyStartRef = useRef(null);
+  const breakStartRef = useRef(null);
+
+  // Time formatting
+  const formatTime = (sec) => {
+    const m = Math.floor(sec / 60).toString().padStart(2, '0');
+    const s = (sec % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
+  /*const fetchState = () => {
     fetch('http://localhost:8080/state')
       .then(res => res.json())
       .then(data => setState(data))
       .catch(err => console.error(err));
-  };
+  };*/
 
   useEffect(() => {
-    fetchState();
-  }, []);
+    const interval = setInterval(() => {
+      if (state.mode === 'study' && studyStartRef.current) { // CHANGED
+        const elapsed = Math.floor((Date.now() - studyStartRef.current) / 1000);
+        setTimerDisplay(formatTime(elapsed));
+      } else if (state.mode === 'break' && breakStartRef.current) { // CHANGED
+        const elapsed = Math.floor((Date.now() - breakStartRef.current) / 1000);
+        setTimerDisplay(formatTime(elapsed));
+       // Warn if going over earned break
+        if (elapsed > state.earnedBreak) {
+          setOverBreak(elapsed - state.earnedBreak);
+        } else {
+          setOverBreak(null);
+        }
+      } else {
+        setTimerDisplay("00:00");
+        setOverBreak(null);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [state.mode]);
+
+
+  const fetchState = () => {
+    fetch('http://localhost:8080/state')
+      .then(res => res.json())
+      .then(data => {
+        setState(data);
+        if (data.studyStart) studyStartRef.current = data.studyStart;
+        if (data.breakStart) breakStartRef.current = data.breakStart;
+      })
+      .catch(err => console.error(err));
+  };
 
   const startStudy = () => {
     fetch('http://localhost:8080/start-study')
       .then(res => res.text())
       .then(msg => {
+        if (msg.includes("started")) {  // only update if success
+          studyStartRef.current = Date.now();
+          setState({ mode: 'study', earnedBreak: 0 });
+        }
         alert(msg);
-        fetchState();
       });
   };
 
@@ -27,8 +73,14 @@ function App() {
     fetch('http://localhost:8080/end-study')
       .then(res => res.json())
       .then(data => {
-        alert(`${data.message} Earned break: ${data.earnedBreakMinutes} min`);
-        fetchState();
+         //if (data.success) {
+          studyStartRef.current = null;
+          // Only use seconds to avoid undef issue
+          setState({ mode: 'break', earnedBreak: data.earnedBreakSeconds });
+          alert(`${data.message} Earned break: ${Math.floor(data.earnedBreakSeconds/60)} min`);
+        /*} else {
+          alert(data.message);
+        }*/
       });
   };
 
@@ -37,7 +89,8 @@ function App() {
       .then(res => res.text())
       .then(msg => {
         alert(msg);
-        fetchState();
+        breakStartRef.current = Date.now();
+        setState(prev => ({ ...prev, breakStart: true }));
       });
   };
 
@@ -46,17 +99,38 @@ function App() {
       .then(res => res.json())
       .then(data => {
         alert(data.message);
-        fetchState();
+        breakStartRef.current = null;
+        setState({ ...state, mode: 'idle' });
       });
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '20px' }}>
-      <h1>Studytyme</h1>
-      {state.mode === 'idle' && <button onClick={startStudy}>Start Study</button>}
-      {state.mode === 'study' && <button onClick={endStudy}>End Study</button>}
-      {state.mode === 'break' && !state.breakStart && <button onClick={startBreak}>Start Break</button>}
-      {state.mode === 'break' && state.breakStart && <button onClick={endBreak}>End Break</button>}
+     <div style={{ display: 'flex', padding: '20px' }}>
+      {/* Timer area */}
+      <div style={{ marginRight: '20px' }}>
+        <h2>Timer</h2>
+        <div style={{ fontSize: '2em', fontWeight: 'bold' }}>{timerDisplay}</div>
+
+        {state.mode === 'break' && (
+          <div style={{ marginTop: '5px', color: 'red' }}>
+            Earned break: {Math.floor(state.earnedBreak / 60)} min
+            {overBreak && (
+              <div style={{ marginTop: '5px', color: 'darkred', fontWeight: 'bold' }}>
+                Over break by {formatTime(overBreak)}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Notepad temp */}
+      <div style={{ flex: 1 }}>
+        <h1>Studytyme</h1>
+        {state.mode === 'idle' && <button onClick={startStudy}>Start Study</button>}
+        {state.mode === 'study' && <button onClick={endStudy}>End Study</button>}
+        {state.mode === 'break' && !state.breakStart && <button onClick={startBreak}>Start Break</button>}
+        {state.mode === 'break' && state.breakStart && <button onClick={endBreak}>End Break</button>}
+      </div>
     </div>
   );
 }
