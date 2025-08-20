@@ -21,6 +21,21 @@ let state = {
     earnedBreak: 0 // seconds
 };
 
+// Notes
+let savedNotes = "";
+
+// Save notes
+app.post('/save-notes', (req, res) => {
+  savedNotes = req.body.notes || "";
+  console.log("Notes saved.");
+  res.json({ success: true, message: "Notes saved." });
+});
+
+// Load notes
+app.get('/load-notes', (req, res) => {
+  res.json({ notes: savedNotes });
+});
+
 // Start study route
 app.get('/start-study', (req, res) => {
     if (state.mode === 'study') {

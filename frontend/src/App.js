@@ -4,9 +4,20 @@ function App() {
   const [state, setState] = useState({ mode: 'idle' }); // Initial state
   const [timerDisplay, setTimerDisplay] = useState("00:00"); // Timer set
   const [overBreak, setOverBreak] = useState(null); // Track break 'overtime'
+  const [notes, setNotes] = useState("");
 
   const studyStartRef = useRef(null);
   const breakStartRef = useRef(null);
+
+  // Load notes initially
+  useEffect(() => {
+    fetch('http://localhost:8080/load-notes')
+      .then(res => res.json())
+      .then(data => {
+        setNotes(data.notes || "");
+      })
+      .catch(err => console.error("Error loading notes:", err));
+  }, []);
 
   // Time formatting
   const formatTime = (sec) => {
@@ -104,6 +115,18 @@ function App() {
       });
   };
 
+  const saveNotes = () => {
+    fetch('http://localhost:8080/save-notes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notes })
+    })
+      .then(res => res.json())
+      .then(data => {
+        alert(data.message);
+      });
+  };
+
   return (
      <div style={{ display: 'flex', padding: '20px' }}>
       {/* Timer area */}
@@ -130,6 +153,18 @@ function App() {
         {state.mode === 'study' && <button onClick={endStudy}>End Study</button>}
         {state.mode === 'break' && !state.breakStart && <button onClick={startBreak}>Start Break</button>}
         {state.mode === 'break' && state.breakStart && <button onClick={endBreak}>End Break</button>}
+
+        <h2 style={{ marginTop: '20px' }}>Notes</h2>
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          rows="15"
+          cols="50"
+          style={{ width: '100%', fontSize: '1em', padding: '10px' }}
+        />
+        <div>
+          <button onClick={saveNotes} style={{ marginTop: '10px' }}>Save Notes</button>
+        </div>
       </div>
     </div>
   );
