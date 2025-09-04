@@ -160,7 +160,7 @@ function App() {
           onChange={(e) => setNotes(e.target.value)}
           rows="15"
           cols="50"
-          style={{ width: '100%', fontSize: '1em', padding: '10px' }}
+          style={{ width: '80%', fontSize: '1em', padding: '10px' }}
         />
         <div>
           <button onClick={saveNotes} style={{ marginTop: '10px' }}>Save Notes</button>
